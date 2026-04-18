@@ -1,6 +1,7 @@
 import requests
+import os
 
-API_KEY = "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"
+API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 def analyze_symptoms(symptoms, history=None):
     try:
