@@ -9,11 +9,13 @@ def analyze_symptoms(symptoms, history=None):
 
         headers = {
             "Authorization": f"Bearer {API_KEY}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://medical-assistant-wc3pco29rjtwseudpwc3m9.streamlit.app",
+            "X-Title": "Medical Assistant"
         }
 
         data = {
-            "model": "openai/gpt-3.5-turbo",
+            "model": "mistralai/mistral-7b-instruct",
             "messages": [
                 {
                     "role": "user",
@@ -35,7 +37,7 @@ Give:
         response = requests.post(url, headers=headers, json=data)
         result = response.json()
 
-        # ✅ Safe handling
+        # Safe handling
         if "choices" in result:
             return result["choices"][0]["message"]["content"]
         else:
