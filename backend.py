@@ -15,14 +15,31 @@ def analyze_symptoms(symptoms, history=None):
         data = {
             "model": "openai/gpt-3.5-turbo",
             "messages": [
-                {"role": "user", "content": f"User symptoms: {symptoms}. Give medical advice."}
+                {
+                    "role": "user",
+                    "content": f"""
+You are a helpful medical assistant.
+
+User symptoms: {symptoms}
+
+Give:
+- Symptom summary
+- Possible conditions
+- Advice
+- When to see a doctor
+"""
+                }
             ]
         }
 
         response = requests.post(url, headers=headers, json=data)
         result = response.json()
 
-        return result["choices"][0]["message"]["content"]
+        # ✅ Safe handling
+        if "choices" in result:
+            return result["choices"][0]["message"]["content"]
+        else:
+            return f"API Error: {result}"
 
     except Exception as e:
         return f"Error: {str(e)}"
