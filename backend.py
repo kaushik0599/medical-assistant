@@ -15,7 +15,7 @@ def analyze_symptoms(symptoms, history=None):
         }
 
         data = {
-            "model": "mistralai/mistral-7b-instruct",
+            "model": "openai/gpt-3.5-turbo",  # ✅ working model
             "messages": [
                 {
                     "role": "user",
@@ -37,7 +37,7 @@ Give:
         response = requests.post(url, headers=headers, json=data)
         result = response.json()
 
-        # Safe handling
+        # ✅ Safe response handling
         if "choices" in result:
             return result["choices"][0]["message"]["content"]
         else:
