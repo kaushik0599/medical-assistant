@@ -1,73 +1,116 @@
 import requests
 import os
 
-API_KEY = os.getenv("OPENROUTER_API_KEY")
+# ===== API KEY =====
+try:
+    import streamlit as st
+    API_KEY = st.secrets.get("OPENROUTER_API_KEY")
+except:
+    API_KEY = None
 
-def is_medical_query(text):
-    text = text.lower()
+if not API_KEY:
+    API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-    medical_keywords = [
-        "pain", "fever", "cough", "cold", "headache", "vomit", "nausea",
-        "injury", "infection", "disease", "symptom", "doctor", "medicine",
-        "body", "stomach", "chest", "leg", "arm", "eye", "ear"
+URL = "https://openrouter.ai/api/v1/chat/completions"
+HEADERS = {
+    "Authorization": f"Bearer {API_KEY}" if API_KEY else "",
+    "Content-Type": "application/json"
+}
+
+# ===== 🔥 SMART HYBRID FILTER =====
+def is_medical_query(user_input):
+    text = user_input.lower()
+
+    # ✅ Fast reliable keywords (broad coverage)
+    basic_keywords = [
+        "pain", "ache", "fever", "headache", "cough", "cold",
+        "vomit", "nausea", "dizzy", "fatigue", "weakness",
+        "infection", "injury", "burn", "bleeding",
+
+        "cancer", "diabetes", "asthma", "covid", "arthritis",
+        "stroke", "heart", "tumor", "thyroid", "bp", "pressure",
+        "multiple sclerosis", "ms"
     ]
 
-    for word in medical_keywords:
-        if word in text:
-            return True
+    # ✅ If obvious match → accept immediately
+    if any(word in text for word in basic_keywords):
+        return True
 
-    return False
+    # 🔁 fallback to AI (only if needed)
+    if not API_KEY:
+        return False
 
-
-def analyze_symptoms(symptoms, history=None):
     try:
-        # 🚫 Block irrelevant queries
-        if not is_medical_query(symptoms):
-            return """❌ This system is designed only for medical symptom analysis.
-
-Please describe health-related symptoms like:
-- fever, pain, cough, headache, etc.
-
-For other queries, please use general AI tools like ChatGPT."""
-
-        url = "https://openrouter.ai/api/v1/chat/completions"
-
-        headers = {
-            "Authorization": f"Bearer {API_KEY}",
-            "Content-Type": "application/json",
-        }
-
         data = {
             "model": "openai/gpt-3.5-turbo",
             "messages": [
                 {
+                    "role": "system",
+                    "content": "Reply ONLY YES or NO. Is this about health, disease, symptoms, or medical advice?"
+                },
+                {"role": "user", "content": user_input}
+            ],
+            "max_tokens": 5
+        }
+
+        res = requests.post(URL, headers=HEADERS, json=data)
+        result = res.json()
+
+        answer = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip().upper()
+
+        return "YES" in answer
+
+    except:
+        return False
+
+
+# ===== 🧠 MAIN FUNCTION =====
+def analyze_symptoms(symptoms, history=None):
+
+    if not API_KEY:
+        return "❌ API key missing. Set OPENROUTER_API_KEY."
+
+    # ❌ Block irrelevant
+    if not is_medical_query(symptoms):
+        return """❌ This system is designed ONLY for medical queries.
+
+Please describe health-related issues like:
+• "I have fever and headache"
+• "Chest pain for 2 days"
+• "Symptoms of diabetes"
+
+For other queries, use general AI tools."""
+
+    try:
+        data = {
+            "model": "openai/gpt-3.5-turbo",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": """You are a medical assistant.
+
+Format:
+Symptom Summary:
+Possible Conditions:
+Advice:
+When to See a Doctor:
+
+Be simple, safe, and helpful."""
+                },
+                {
                     "role": "user",
-                    "content": f"""
-You are a medical assistant.
-
-STRICT RULES:
-- ONLY answer medical symptom-related queries
-- Do NOT answer general or unrelated questions
-
-User symptoms: {symptoms}
-
-Give:
-- Symptom summary
-- Possible conditions
-- Advice
-- When to see a doctor
-"""
+                    "content": f"User input: {symptoms}"
                 }
             ]
         }
 
-        response = requests.post(url, headers=headers, json=data)
-        result = response.json()
+        res = requests.post(URL, headers=HEADERS, json=data)
+        result = res.json()
 
-        if "choices" in result:
-            return result["choices"][0]["message"]["content"]
-        else:
-            return f"API Error: {result}"
+        if "choices" not in result:
+            return f"⚠️ API Error: {result}"
+
+        return result["choices"][0]["message"]["content"]
 
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"⚠️ Error: {str(e)}"
