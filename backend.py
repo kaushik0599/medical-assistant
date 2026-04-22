@@ -3,24 +3,51 @@ import os
 
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 
+def is_medical_query(text):
+    text = text.lower()
+
+    medical_keywords = [
+        "pain", "fever", "cough", "cold", "headache", "vomit", "nausea",
+        "injury", "infection", "disease", "symptom", "doctor", "medicine",
+        "body", "stomach", "chest", "leg", "arm", "eye", "ear"
+    ]
+
+    for word in medical_keywords:
+        if word in text:
+            return True
+
+    return False
+
+
 def analyze_symptoms(symptoms, history=None):
     try:
+        # 🚫 Block irrelevant queries
+        if not is_medical_query(symptoms):
+            return """❌ This system is designed only for medical symptom analysis.
+
+Please describe health-related symptoms like:
+- fever, pain, cough, headache, etc.
+
+For other queries, please use general AI tools like ChatGPT."""
+
         url = "https://openrouter.ai/api/v1/chat/completions"
 
         headers = {
             "Authorization": f"Bearer {API_KEY}",
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://medical-assistant-wc3pco29rjtwseudpwc3m9.streamlit.app",
-            "X-Title": "Medical Assistant"
         }
 
         data = {
-            "model": "openai/gpt-3.5-turbo",  # ✅ working model
+            "model": "openai/gpt-3.5-turbo",
             "messages": [
                 {
                     "role": "user",
                     "content": f"""
-You are a helpful medical assistant.
+You are a medical assistant.
+
+STRICT RULES:
+- ONLY answer medical symptom-related queries
+- Do NOT answer general or unrelated questions
 
 User symptoms: {symptoms}
 
@@ -37,7 +64,6 @@ Give:
         response = requests.post(url, headers=headers, json=data)
         result = response.json()
 
-        # ✅ Safe response handling
         if "choices" in result:
             return result["choices"][0]["message"]["content"]
         else:
