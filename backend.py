@@ -3,29 +3,30 @@ import os
 import streamlit as st
 
 # ================== 🔐 API KEY ==================
-API_KEY = st.secrets.get("OPENROUTER_API_KEY") or os.getenv("OPENROUTER_API_KEY")
+try:
+    API_KEY = st.secrets["OPENROUTER_API_KEY"]
+except:
+    API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 
 # ================== 🚨 EMERGENCY DETECTION ==================
 def detect_emergency(text):
     text = text.lower()
-
     emergency_keywords = [
-        "chest pain", "heart attack", "can't breathe", "difficulty breathing",
-        "unconscious", "severe bleeding", "stroke", "fainting",
-        "seizure", "no pulse", "collapse"
+        "chest pain", "heart attack", "can't breathe", "cannot breathe",
+        "difficulty breathing", "difficulty in breathing", "trouble breathing",
+        "unconscious", "severe bleeding", "heavy bleeding",
+        "stroke", "fainting", "seizure", "collapse", "overdose", "poisoning",
+        "suicidal", "suicide", "not breathing", "stopped breathing"
     ]
-
     return any(word in text for word in emergency_keywords)
 
 
 # ================== 📊 SEVERITY ==================
 def get_severity(text):
     text = text.lower()
-
-    severe = ["chest pain", "breathing", "blood", "unconscious", "severe", "stroke"]
-    moderate = ["fever", "infection", "vomiting", "dizziness", "pain"]
-
+    severe = ["chest pain", "breathing", "blood", "bleeding", "stroke", "unconscious", "overdose", "seizure"]
+    moderate = ["fever", "infection", "vomiting", "dizziness", "pain", "migraine", "fracture", "rash"]
     if any(word in text for word in severe):
         return "🔴 Severe"
     elif any(word in text for word in moderate):
@@ -34,115 +35,147 @@ def get_severity(text):
         return "🟢 Mild"
 
 
-# ================== 🧠 SMART MEDICAL FILTER ==================
+# ================== 🧠 MEDICAL FILTER ==================
 def is_medical_query(user_input):
     text = user_input.lower()
 
-    # Basic rejection patterns
-    non_medical_patterns = [
-        "learn", "course", "dance", "movie", "song", "code", "programming",
-        "weapon", "game", "youtube", "instagram", "travel"
+    non_medical_exact = [
+        "dance tutorial", "movie recommend", "song lyrics", "play a game",
+        "write code", "programming help", "youtube", "instagram", "tiktok",
+        "stock market", "crypto", "recipe", "travel", "weather"
     ]
-
-    # If clearly non-medical
-    if any(word in text for word in non_medical_patterns):
+    if any(phrase in text for phrase in non_medical_exact):
         return False
 
-    # Accept if contains health-like context
-    medical_indicators = [
-        "pain", "fever", "headache", "infection", "disease",
-        "symptom", "sick", "hurt", "doctor", "medicine",
-        "cancer", "diabetes", "asthma", "pressure", "breathing"
+    medical_keywords = [
+        "pain", "ache", "fever", "cough", "cold", "sneeze", "sneezing",
+        "runny nose", "stuffy nose", "congestion", "sore throat", "throat",
+        "headache", "migraine", "nausea", "vomiting", "diarrhea", "constipation",
+        "fatigue", "tired", "weakness", "dizzy", "dizziness", "fainting",
+        "swelling", "swollen", "rash", "itching", "itchy", "burning",
+        "bleeding", "blood", "bruise", "bruising", "wound", "injury",
+        "cramps", "spasm", "stiffness", "numbness", "tingling",
+        "shortness of breath", "breathing", "chest", "palpitation",
+        "appetite", "weight loss", "weight gain", "night sweats", "chills",
+        "eye", "ear", "nose", "skin", "stomach", "abdomen", "back",
+        "joint", "muscle", "bone", "neck", "shoulder", "knee", "ankle",
+        "diabetes", "hypertension", "asthma", "allergy", "allergic",
+        "infection", "viral", "bacterial", "fungal", "flu", "influenza",
+        "covid", "corona", "hiv", "aids", "std", "sti",
+        "cancer", "tumor", "cyst", "ulcer", "hernia",
+        "arthritis", "osteoporosis", "anemia", "thyroid",
+        "anxiety", "depression", "stress", "insomnia", "sleep",
+        "acne", "eczema", "psoriasis", "dermatitis",
+        "urinary", "uti", "kidney", "liver", "gallbladder",
+        "appendix", "appendicitis", "pneumonia", "bronchitis",
+        "sinusitis", "tonsils", "tonsillitis",
+        "fracture", "sprain", "strain", "dislocation",
+        "epilepsy", "dementia",
+        "medicine", "medication", "drug", "tablet", "capsule", "syrup",
+        "antibiotic", "paracetamol", "ibuprofen", "aspirin", "cetirizine",
+        "amoxicillin", "metformin", "insulin", "steroids", "inhaler",
+        "cream", "ointment", "drops", "injection", "vaccine", "dose",
+        "side effect", "overdose", "prescription", "dosage",
+        "doctor", "hospital", "clinic", "diagnose", "diagnosis",
+        "treatment", "remedy", "cure", "surgery", "test", "lab",
+        "sick", "ill", "unwell", "symptom", "condition", "disease",
+        "health", "medical", "hurt", "feel", "suffering",
     ]
 
-    return any(word in text for word in medical_indicators)
+    for word in medical_keywords:
+        if word in text:
+            return True
+
+    patterns = ["i have", "i am feeling", "i feel", "suffering from", "symptoms of", "what is", "can i take"]
+    for p in patterns:
+        if p in text and len(text.split()) >= 3:
+            return True
+
+    return False
 
 
 # ================== 🤖 MAIN FUNCTION ==================
 def analyze_symptoms(symptoms, history=None):
 
-    # 🚨 Emergency first
+    # 🚨 Emergency check FIRST — before anything else
     if detect_emergency(symptoms):
-        return """🚨 EMERGENCY WARNING
+        return """🚨 **EMERGENCY WARNING**
 
-Your symptoms may indicate a serious condition.
+Your symptoms may indicate a **life-threatening condition**.
 
-👉 Please seek IMMEDIATE medical help
-👉 Call emergency services or visit nearest hospital
+👉 **Call emergency services immediately — 108 / 112**
+👉 **Go to the nearest hospital ER right away**
 
-Do NOT rely on this app in emergencies.
-"""
+⛔ Do NOT rely on this app in emergencies."""
 
     # ❌ Not medical
     if not is_medical_query(symptoms):
-        return """❌ This system is designed ONLY for medical queries.
+        return """❌ **This assistant only handles medical queries.**
 
-Please describe health-related issues like:
-• "I have fever and headache"
-• "Chest pain for 2 days"
-• "Symptoms of diabetes"
+Please describe a symptom, condition, or medicine. Examples:
+- *"I have a cough and cold for 2 days"*
+- *"What are the side effects of ibuprofen?"*
+- *"My stomach hurts after eating"*"""
 
-For other queries, please use general AI tools like ChatGPT.
-"""
-
-    # 🔐 API check
+    # 🔐 API key check
     if not API_KEY:
-        return "❌ API key missing. Set OPENROUTER_API_KEY in Streamlit Secrets or environment."
+        return "❌ API key missing. Set `OPENROUTER_API_KEY` in Streamlit secrets."
+
+    # Build conversation history
+    messages = []
+    if history:
+        for msg in history[:-1]:
+            if msg["role"] in ("user", "assistant"):
+                messages.append({"role": msg["role"], "content": msg["content"]})
+    messages.append({"role": "user", "content": symptoms})
 
     try:
-        url = "https://openrouter.ai/api/v1/chat/completions"
+        res = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "openai/gpt-3.5-turbo",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": """You are a knowledgeable and empathetic medical assistant.
+Always respond in this structure:
+1. **Symptom Summary** – briefly restate what the user described
+2. **Possible Conditions** – list 2-4 likely causes
+3. **Home Care & Advice** – practical steps they can take
+4. **Medicines** – common OTC options if applicable (with standard dosage)
+5. **When to See a Doctor** – red flag signs to watch for
 
-        headers = {
-            "Authorization": f"Bearer {API_KEY}",
-            "Content-Type": "application/json"
-        }
+Be clear, concise, and compassionate. Never refuse a genuine medical question about symptoms, conditions, or medicines.
+Always end with a reminder that this is not a substitute for professional medical advice."""
+                    },
+                    *messages
+                ]
+            }
+        )
 
-        data = {
-            "model": "openai/gpt-3.5-turbo",
-            "messages": [
-                {
-                    "role": "system",
-                    "content": """You are a medical assistant.
+        result = res.json()
 
-Give structured output:
-1. Symptom Summary
-2. Possible Conditions
-3. Advice
-4. When to see a doctor
-
-Keep it simple and clear."""
-                },
-                {
-                    "role": "user",
-                    "content": symptoms
-                }
-            ]
-        }
-
-        response = requests.post(url, headers=headers, json=data)
-        result = response.json()
-
-        # 🧠 Extract safely
         if "choices" not in result:
-            return f"API Error: {result}"
+            return f"❌ API Error: {result}"
 
         ai_response = result["choices"][0]["message"]["content"]
-
-        # 📊 Add severity
         severity = get_severity(symptoms)
 
-        # 🤖 Follow-up
         follow_up = """
 
-Follow-up questions:
-• How long have you had these symptoms?
-• Is the condition improving or worsening?
-• Any additional symptoms?
-"""
+---
+💬 **You can also ask:**
+- How long have you had this?
+- Is it getting better or worse?
+- Any other symptoms?
 
-        final_output = f"Severity Level: {severity}\n\n{ai_response}\n{follow_up}"
+⚠️ *Informational only. Please consult a doctor for diagnosis and treatment.*"""
 
-        return final_output
+        return f"**Severity Level: {severity}**\n\n{ai_response}{follow_up}"
 
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"❌ Error: {str(e)}"
