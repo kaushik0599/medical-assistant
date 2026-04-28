@@ -167,13 +167,14 @@ Always end with a reminder that this is not a substitute for professional medica
 
         follow_up = """
 
----
-💬 **You can also ask:**
-- How long have you had this?
-- Is it getting better or worse?
-- Any other symptoms?
+🩺 I need a bit more information to assist you better:
 
-⚠️ *Informational only. Please consult a doctor for diagnosis and treatment.*"""
+• How long have you had these symptoms?
+• Are they getting better or worse?
+• Do you have any other symptoms?
+
+Please reply with more details.
+"""
 
         return f"**Severity Level: {severity}**\n\n{ai_response}{follow_up}"
 
