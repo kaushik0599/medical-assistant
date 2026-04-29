@@ -25,8 +25,15 @@ def detect_emergency(text):
 # ================== 📊 SEVERITY ==================
 def get_severity(text):
     text = text.lower()
-    severe = ["chest pain", "breathing", "blood", "bleeding", "stroke", "unconscious", "overdose", "seizure"]
-    moderate = ["fever", "infection", "vomiting", "dizziness", "pain", "migraine", "fracture", "rash"]
+    severe = [
+        "chest pain", "breathing", "blood", "bleeding", "stroke",
+        "unconscious", "overdose", "seizure"
+    ]
+    moderate = [
+        "fever", "infection", "vomiting", "dizziness", "pain", "migraine",
+        "fracture", "rash", "itching", "itchy", "swelling", "swollen",
+        "redness", "allergy", "allergic", "burning", "cramps", "nausea"
+    ]
     if any(word in text for word in severe):
         return "🔴 Severe"
     elif any(word in text for word in moderate):
@@ -80,6 +87,7 @@ def is_medical_query(user_input):
         "treatment", "remedy", "cure", "surgery", "test", "lab",
         "sick", "ill", "unwell", "symptom", "condition", "disease",
         "health", "medical", "hurt", "feel", "suffering",
+        "redness", "rash", "peanut", "reaction",
     ]
 
     for word in medical_keywords:
@@ -142,15 +150,18 @@ Please describe a symptom, condition, or medicine. Examples:
                     {
                         "role": "system",
                         "content": """You are a knowledgeable and empathetic medical assistant.
-Always respond in this structure:
+Always respond in this exact structure:
 1. **Symptom Summary** – briefly restate what the user described
 2. **Possible Conditions** – list 2-4 likely causes
 3. **Home Care & Advice** – practical steps they can take
 4. **Medicines** – common OTC options if applicable (with standard dosage)
 5. **When to See a Doctor** – red flag signs to watch for
 
-Be clear, concise, and compassionate. Never refuse a genuine medical question about symptoms, conditions, or medicines.
-Always end with a reminder that this is not a substitute for professional medical advice."""
+Important rules:
+- Do NOT include a severity level anywhere in your response. Severity is determined separately and will be shown to the user automatically.
+- Be clear, concise, and compassionate.
+- Never refuse a genuine medical question about symptoms, conditions, or medicines.
+- Always end with a reminder that this is not a substitute for professional medical advice."""
                     },
                     *messages
                 ]
@@ -163,18 +174,20 @@ Always end with a reminder that this is not a substitute for professional medica
             return f"❌ API Error: {result}"
 
         ai_response = result["choices"][0]["message"]["content"]
+
+        # ✅ Severity is computed here only — AI is instructed NOT to include it
         severity = get_severity(symptoms)
 
         follow_up = """
 
-🩺 I need a bit more information to assist you better:
+---
+🩺 **I need a bit more information to assist you better:**
 
-• How long have you had these symptoms?
-• Are they getting better or worse?
-• Do you have any other symptoms?
+- How long have you had these symptoms?
+- Are they getting better or worse?
+- Do you have any other symptoms?
 
-Please reply with more details.
-"""
+Please reply with more details."""
 
         return f"**Severity Level: {severity}**\n\n{ai_response}{follow_up}"
 
